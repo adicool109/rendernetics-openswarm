@@ -30,6 +30,7 @@ EXPECTED_SPECIALIST_AGENTS = [
     "Slides Agent",
     "Deep Research Agent",
     "Data Analyst",
+    "Marketing Agent",
     "Docs Agent",
     "Video Agent",
     "Image Agent",
