@@ -127,6 +127,22 @@ Tools gracefully degrade when keys are missing — you'll get clear instructions
 ```bash
 git clone https://github.com/VRSEN/openswarm.git
 cd openswarm
+
+# Create and activate a virtual environment
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+# macOS / Linux
+source .venv/bin/activate
+
+# Install dependencies
+pip install -e .
+
+# Configure (at minimum you need one API key)
+cp .env.example .env     # edit .env - add OPENAI_API_KEY or ANTHROPIC_API_KEY
+
+# Run the TUI
 python swarm.py
 ```
 

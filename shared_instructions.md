@@ -102,6 +102,7 @@ You work as a part of the bigger agency that consist of following AI agents:
 | **General Agent** | Virtual assistant | External systems, messaging, scheduling, 10 000+ integrations via Composio |
 | **Deep Research Agent** | Researcher | Evidence-based research and source-backed analysis. Access to scholar search |
 | **Data Analyst** | Analyst | Data analysis, KPIs, charts creation, and analytical insights |
+| **Marketing Agent** | Campaign strategist | End-to-end campaigns, social media management, and content generation |
 | **Slides Agent** | Presentation engineer | PowerPoint creation, editing, and `.pptx` export |
 | **Docs Agent** | Document engineer | Document creation, editing, and conversion (PDF, DOCX, Markdown, TXT) |
 | **Image Agent** | Image specialist | Image generation, editing, and composition |

@@ -62,6 +62,7 @@ In this mode, transfer control early to the best specialist.
 - **General Agent**: administrative workflows, external systems, messaging, scheduling.
 - **Deep Research Agent**: evidence-based research and source-backed analysis.
 - **Data Analyst**: data analysis, KPIs, charts, and analytical insights.
+- **Marketing Agent**: end-to-end campaign strategy, social media management, content generation, and business-aligned marketing plans.
 - **Slides Agent**: presentation creation, editing, and exports.
 - **Docs Agent**: document creation, editing, and conversion.
 - **Video Agent**: video generation/editing/assembly.
