@@ -16,6 +16,8 @@ from rich.panel import Panel
 from rich.rule import Rule
 from rich.table import Table
 
+from run_utils import _openswarm_state_root
+
 try:
     import questionary
     from questionary import Choice, Style as QStyle
@@ -26,11 +28,16 @@ try:
 
     _HAS_QUESTIONARY = True
 except ImportError:
+    class Choice:
+        def __init__(self, title: object, value: object | None = None) -> None:
+            self.title = title
+            self.value = title if value is None else value
+
     _HAS_QUESTIONARY = False
 
 console = Console()
 
-ENV_PATH = Path(__file__).parent / ".env"
+ENV_PATH = _openswarm_state_root() / ".env"
 
 # ── questionary theme ─────────────────────────────────────────────────────────
 _QSTYLE = None
@@ -202,6 +209,7 @@ def _ask_confirm(message: str, default: bool = True) -> bool:
 
 
 def _write_env(updates: dict) -> None:
+    ENV_PATH.parent.mkdir(parents=True, exist_ok=True)
     if not ENV_PATH.exists():
         ENV_PATH.write_text("", encoding="utf-8")
     for key, value in updates.items():

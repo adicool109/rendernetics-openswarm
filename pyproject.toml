@@ -1,7 +1,7 @@
 [project]
 name = "open-swarm"
 description = "An open-source multi-agent AI team built on Agency Swarm and the OpenAI Agents SDK"
-version = "1.0.1-rc.4"
+version = "1.0.1-rc.7"
 license = { text = "MIT" }
 keywords = ["agency-swarm", "openai", "multi-agent", "open-source", "openswarm"]
 requires-python = ">=3.12"
@@ -60,7 +60,7 @@ dependencies = [
 openswarm = "run_utils:main"
 
 [tool.setuptools]
-py-modules = ["agency", "swarm", "helpers", "config", "onboard", "server"]
+py-modules = ["agency", "swarm", "helpers", "config", "onboard", "server", "run_utils"]
 
 [tool.setuptools.packages.find]
 where = ["."]

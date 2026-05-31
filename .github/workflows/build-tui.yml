@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 env:
-  AGENTSWARM_CLI_VERSION: 1.4.34
+  AGENTSWARM_CLI_VERSION: 1.4.37-rc.1
 
 jobs:
   prepare:
@@ -111,17 +111,54 @@ jobs:
           - os: macos-latest
             platform: darwin
             arch: arm64
+            baseline: false
+            asset: agentswarm-darwin-arm64
           - os: macos-15-intel
             platform: darwin
             arch: x64
+            baseline: false
+            asset: agentswarm-darwin-x64
+          - os: macos-15-intel
+            platform: darwin
+            arch: x64
+            baseline: true
+            asset: agentswarm-darwin-x64-baseline
           - os: ubuntu-latest
             platform: linux
             arch: x64
+            baseline: false
+            asset: agentswarm-linux-x64
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            baseline: true
+            asset: agentswarm-linux-x64-baseline
+          - os: ubuntu-24.04-arm
+            platform: linux
+            arch: arm64
+            baseline: false
+            asset: agentswarm-linux-arm64
           - os: windows-latest
             platform: windows
             arch: x64
+            baseline: false
+            build_all: false
+            asset: agentswarm-windows-x64.exe
+          - os: ubuntu-latest
+            platform: windows
+            arch: x64
+            baseline: true
+            build_all: true
+            asset: agentswarm-windows-x64-baseline.exe
+          - os: windows-11-arm
+            platform: windows
+            arch: arm64
+            baseline: false
+            build_all: false
+            asset: agentswarm-windows-arm64.exe
 
     runs-on: ${{ matrix.os }}
+    environment: ${{ needs.prepare.outputs.is_prerelease == 'true' && 'dev' || 'prod' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -133,6 +170,15 @@ jobs:
         with:
           bun-version: "1.3.13"
 
+      - name: Validate official product telemetry secrets
+        if: github.repository == 'VRSEN/OpenSwarm'
+        shell: bash
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$POSTHOG_API_KEY"
+
       - name: Install dependencies
         working-directory: agentswarm-cli
         run: bun install
@@ -140,7 +186,11 @@ jobs:
       - name: Build binary
         working-directory: agentswarm-cli/packages/opencode
         env:
+          BUILD_ALL: ${{ matrix.build_all || false }}
+          BASELINE: ${{ matrix.baseline }}
           OPENCODE_CHANNEL: ${{ needs.prepare.outputs.npm_tag }}
+          AGENTSWARM_POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          AGENTSWARM_POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
           AGENTSWARM_PRODUCT_DISPLAY_NAME: OpenSwarm
           AGENTSWARM_PRODUCT_COMMAND: openswarm
           AGENTSWARM_PRODUCT_PACKAGE_NAME: "@vrsen/openswarm"
@@ -151,28 +201,40 @@ jobs:
           AGENTSWARM_PRODUCT_MDNS_DOMAIN: openswarm.local
           AGENTSWARM_PRODUCT_STARTER_REPO: VRSEN/OpenSwarm
           AGENTSWARM_PRODUCT_STARTER_FOLDER: openswarm
-          AGENTSWARM_PRODUCT_ENTRY_FILES: swarm.py,agency.py
+          AGENTSWARM_PRODUCT_ENTRY_FILES: swarm.py
+          AGENTSWARM_PRODUCT_SKIP_POST_AUTH_MODEL_SELECTION: "true"
+          AGENTSWARM_PRODUCT_TUI_LOGO_LEFT: '["                                    "," ██████╗ ██████╗ ███████╗███╗   ██╗","██╔═══██╗██╔══██╗██╔════╝████╗  ██║","██║   ██║██████╔╝█████╗  ██╔██╗ ██║","██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║","╚██████╔╝██║     ███████╗██║ ╚████║"," ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝"]'
+          AGENTSWARM_PRODUCT_TUI_LOGO_RIGHT: '["","███████╗██╗    ██╗ █████╗ ██████╗ ███╗   ███╗","██╔════╝██║    ██║██╔══██╗██╔══██╗████╗ ████║","███████╗██║ █╗ ██║███████║██████╔╝██╔████╔██║","╚════██║██║███╗██║██╔══██║██╔══██╗██║╚██╔╝██║","███████║╚███╔███╔╝██║  ██║██║  ██║██║ ╚═╝ ██║","╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝"]'
+          AGENTSWARM_PRODUCT_WORDMARK_LINES: '[""," ██████╗ ██████╗ ███████╗███╗   ██╗ ███████╗██╗    ██╗ █████╗ ██████╗ ███╗   ███╗","██╔═══██╗██╔══██╗██╔════╝████╗  ██║ ██╔════╝██║    ██║██╔══██╗██╔══██╗████╗ ████║","██║   ██║██████╔╝█████╗  ██╔██╗ ██║ ███████╗██║ █╗ ██║███████║██████╔╝██╔████╔██║","██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║ ╚════██║██║███╗██║██╔══██╗██╔══██╗██║╚██╔╝██║","╚██████╔╝██║     ███████╗██║ ╚████║ ███████║╚███╔███╔╝██║  ██║██║  ██║██║ ╚═╝ ██║"," ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝ ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝"]'
+          AGENTSWARM_PRODUCT_PYTHON_ENVIRONMENT: standalone
+          AGENTSWARM_PRODUCT_ENABLE_ADDONS: "true"
           AGENTSWARM_PRODUCT_VERSION: ${{ needs.prepare.outputs.release_version }}
-        run: bun run script/build.ts --single --skip-install
-
-      - name: Rename binary (Unix)
-        if: matrix.platform != 'windows'
         run: |
-          mv agentswarm-cli/packages/opencode/dist/agentswarm-cli-${{ matrix.platform }}-${{ matrix.arch }}/bin/agentswarm \
-             agentswarm-${{ matrix.platform }}-${{ matrix.arch }}
+          node -e "const cp=require('child_process');const all=process.env.BUILD_ALL==='true';const args=all?['run','script/build.ts']:['run','script/build.ts','--single','--skip-install',...(process.env.BASELINE==='true'?['--baseline']:[])];cp.execFileSync('bun',args,{stdio:'inherit'});"
 
-      - name: Rename binary (Windows)
-        if: matrix.platform == 'windows'
+      - name: Rename binary (Unix runner)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          binary="agentswarm"
+          if [[ "${{ matrix.platform }}" == "windows" ]]; then
+            binary="agentswarm.exe"
+          fi
+          mv agentswarm-cli/packages/opencode/dist/agentswarm-cli-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.baseline && '-baseline' || '' }}/bin/$binary \
+             ${{ matrix.asset }}
+
+      - name: Rename binary (Windows runner)
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Move-Item agentswarm-cli/packages/opencode/dist/agentswarm-cli-${{ matrix.platform }}-${{ matrix.arch }}/bin/agentswarm.exe `
-            agentswarm-${{ matrix.platform }}-${{ matrix.arch }}.exe
+          Move-Item agentswarm-cli/packages/opencode/dist/agentswarm-cli-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.baseline && '-baseline' || '' }}/bin/agentswarm.exe `
+            ${{ matrix.asset }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: agentswarm-${{ matrix.platform }}-${{ matrix.arch }}
-          path: agentswarm-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.platform == 'windows' && '.exe' || '' }}
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
           if-no-files-found: error
 
   release:
@@ -285,8 +347,13 @@ jobs:
           required_assets=(
             agentswarm-darwin-arm64
             agentswarm-darwin-x64
+            agentswarm-darwin-x64-baseline
+            agentswarm-linux-arm64
             agentswarm-linux-x64
+            agentswarm-linux-x64-baseline
+            agentswarm-windows-arm64.exe
             agentswarm-windows-x64.exe
+            agentswarm-windows-x64-baseline.exe
           )
 
           for required in "${required_assets[@]}"; do

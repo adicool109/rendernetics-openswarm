@@ -11,6 +11,44 @@ const path = require('path')
 const scriptPath = fs.realpathSync(__filename)
 const packageDir = path.dirname(path.dirname(scriptPath))
 const packageJson = JSON.parse(fs.readFileSync(path.join(packageDir, 'package.json'), 'utf8'))
+const productTuiLogoLeft = [
+  '                                    ',
+  ' ██████╗ ██████╗ ███████╗███╗   ██╗',
+  '██╔═══██╗██╔══██╗██╔════╝████╗  ██║',
+  '██║   ██║██████╔╝█████╗  ██╔██╗ ██║',
+  '██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║',
+  '╚██████╔╝██║     ███████╗██║ ╚████║',
+  ' ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝',
+]
+const productTuiLogoRight = [
+  '',
+  '███████╗██╗    ██╗ █████╗ ██████╗ ███╗   ███╗',
+  '██╔════╝██║    ██║██╔══██╗██╔══██╗████╗ ████║',
+  '███████╗██║ █╗ ██║███████║██████╔╝██╔████╔██║',
+  '╚════██║██║███╗██║██╔══██║██╔══██╗██║╚██╔╝██║',
+  '███████║╚███╔███╔╝██║  ██║██║  ██║██║ ╚═╝ ██║',
+  '╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝',
+]
+const productWordmarkLines = productTuiLogoLeft.map((line, index) => `${line} ${productTuiLogoRight[index] ?? ''}`.trimEnd())
+const productAddons = [
+  { id: 'search', title: 'Web Search', keys: ['SEARCH_API_KEY'] },
+  { id: 'anthropic', title: 'Anthropic Claude', keys: ['ANTHROPIC_API_KEY'], excludeProviders: ['anthropic'] },
+  { id: 'composio', title: 'Composio', keys: ['COMPOSIO_API_KEY', 'COMPOSIO_USER_ID'] },
+  { id: 'google', title: 'Google Gemini', keys: ['GOOGLE_API_KEY'], excludeProviders: ['google'] },
+  { id: 'fal', title: 'Fal.ai', keys: ['FAL_KEY'] },
+  { id: 'pexels', title: 'Pexels', keys: ['PEXELS_API_KEY'] },
+  { id: 'pixabay', title: 'Pixabay', keys: ['PIXABAY_API_KEY'] },
+  { id: 'unsplash', title: 'Unsplash', keys: ['UNSPLASH_ACCESS_KEY'] },
+]
+function resolveStateRoot() {
+  const explicit = process.env.OPENSWARM_STATE_ROOT && process.env.OPENSWARM_STATE_ROOT.trim()
+  if (explicit) return path.resolve(explicit)
+  if (process.platform === 'win32') {
+    return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'OpenSwarm')
+  }
+  return path.join(os.homedir(), '.openswarm')
+}
+
 const downstreamEnv = {
   AGENTSWARM_PRODUCT_DISPLAY_NAME: 'OpenSwarm',
   AGENTSWARM_PRODUCT_COMMAND: 'openswarm',
@@ -22,7 +60,14 @@ const downstreamEnv = {
   AGENTSWARM_PRODUCT_MDNS_DOMAIN: 'openswarm.local',
   AGENTSWARM_PRODUCT_STARTER_REPO: 'VRSEN/OpenSwarm',
   AGENTSWARM_PRODUCT_STARTER_FOLDER: 'openswarm',
-  AGENTSWARM_PRODUCT_ENTRY_FILES: 'swarm.py,agency.py',
+  AGENTSWARM_PRODUCT_ENTRY_FILES: 'swarm.py',
+  AGENTSWARM_PRODUCT_SKIP_POST_AUTH_MODEL_SELECTION: 'true',
+  AGENTSWARM_PRODUCT_TUI_LOGO_LEFT: JSON.stringify(productTuiLogoLeft),
+  AGENTSWARM_PRODUCT_TUI_LOGO_RIGHT: JSON.stringify(productTuiLogoRight),
+  AGENTSWARM_PRODUCT_WORDMARK_LINES: JSON.stringify(productWordmarkLines),
+  AGENTSWARM_PRODUCT_PYTHON_ENVIRONMENT: 'standalone',
+  AGENTSWARM_PRODUCT_ADDONS: JSON.stringify(productAddons),
+  AGENTSWARM_PRODUCT_STATE_ROOT: resolveStateRoot(),
   AGENTSWARM_PRODUCT_VERSION: packageJson.version,
 }
 
@@ -43,12 +88,46 @@ function resolveAgentswarm(startDir) {
   }
 }
 
-function getBinaryName() {
-  return process.platform === 'win32' ? `agentswarm-windows-${os.arch() === 'arm64' ? 'arm64' : 'x64'}.exe` : `agentswarm-${process.platform === 'darwin' ? 'darwin' : 'linux'}-${os.arch() === 'arm64' ? 'arm64' : 'x64'}`
+function getBinaryNames() {
+  const arch = os.arch() === 'arm64' ? 'arm64' : 'x64'
+  const platform = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux'
+  const extension = process.platform === 'win32' ? '.exe' : ''
+  const names = [`agentswarm-${platform}-${arch}${extension}`]
+  if (arch === 'x64') {
+    names.push(`agentswarm-${platform}-${arch}-baseline${extension}`)
+  }
+  return names
+}
+
+function hasExplicitTuiUrl() {
+  return Boolean(process.env.OPENSWARM_TUI_URL && process.env.OPENSWARM_TUI_URL.trim())
+}
+
+function isMuslLinux() {
+  if (process.platform !== 'linux') return false
+
+  try {
+    if (fs.existsSync('/etc/alpine-release')) return true
+  } catch {}
+
+  try {
+    const result = spawnSync('ldd', ['--version'], {
+      encoding: 'utf8',
+      timeout: 1500,
+    })
+    const output = `${result.stdout || ''}\n${result.stderr || ''}`.toLowerCase()
+    return output.includes('musl')
+  } catch {
+    return false
+  }
+}
+
+function shouldUseDependencyBinary() {
+  return isMuslLinux() && !hasExplicitTuiUrl()
 }
 
 function getDownloadUrl(binaryName) {
-  const explicit = process.env.OPENSWARM_TUI_URL && process.env.OPENSWARM_TUI_URL.trim()
+  const explicit = hasExplicitTuiUrl() ? process.env.OPENSWARM_TUI_URL.trim() : ''
   if (explicit) return explicit
   return `https://github.com/VRSEN/OpenSwarm/releases/download/v${packageJson.version}/${binaryName}`
 }
@@ -152,30 +231,33 @@ async function download(url, destination) {
 }
 
 async function ensureCustomBinary() {
-  const binaryName = getBinaryName()
-  const binaryPath = path.join(packageDir, binaryName)
-  const existing = resolveCustomBinary(binaryPath)
-  if (existing) return existing
+  if (shouldUseDependencyBinary()) return null
 
-  fs.rmSync(binaryPath, { force: true })
+  const binaryNames = getBinaryNames()
+  for (const binaryName of binaryNames) {
+    const existing = resolveCustomBinary(path.join(packageDir, binaryName))
+    if (existing) return existing
+  }
 
-  const url = getDownloadUrl(binaryName)
   process.stdout.write('Downloading OpenSwarm TUI...\n')
-  try {
-    await download(url, binaryPath)
-    const resolved = resolveCustomBinary(binaryPath)
-    if (!resolved) {
+  const errors = []
+  for (const binaryName of binaryNames) {
+    const binaryPath = path.join(packageDir, binaryName)
+    fs.rmSync(binaryPath, { force: true })
+    try {
+      await download(getDownloadUrl(binaryName), binaryPath)
+      const resolved = resolveCustomBinary(binaryPath)
+      if (resolved) return resolved
       fs.rmSync(binaryPath, { force: true })
       throw new Error('Downloaded custom TUI binary failed validation')
+    } catch (error) {
+      fs.rmSync(binaryPath, { force: true })
+      errors.push(`${binaryName}: ${error instanceof Error ? error.message : String(error)}`)
     }
-    return resolved
-  } catch (error) {
-    fs.rmSync(binaryPath, { force: true })
-    process.stderr.write(
-      `openswarm: custom OpenSwarm TUI unavailable (${error instanceof Error ? error.message : String(error)}); falling back to packaged AgentSwarm UI.\n`,
-    )
-    return null
   }
+  throw new Error(
+    `custom OpenSwarm TUI unavailable (${errors.join('; ')}). Reinstall @vrsen/openswarm or set OPENSWARM_TUI_URL to a valid binary.`,
+  )
 }
 
 const agentswarmBin = resolveAgentswarm(packageDir)
