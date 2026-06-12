@@ -1,12 +1,12 @@
 [project]
 name = "open-swarm"
 description = "An open-source multi-agent AI team built on Agency Swarm and the OpenAI Agents SDK"
-version = "1.0.1-rc.7"
+version = "1.0.1-rc.9"
 license = { text = "MIT" }
 keywords = ["agency-swarm", "openai", "multi-agent", "open-source", "openswarm"]
 requires-python = ">=3.12"
 dependencies = [
-    "agency-swarm[fastapi,jupyter,litellm]>=1.9.8",
+    "agency-swarm[fastapi,jupyter,litellm]>=1.10.1",
     "questionary>=2.0.0",
     "python-dotenv",
     "rich",
@@ -67,4 +67,8 @@ where = ["."]
 exclude = ["agentswarm-cli*", "venv*", ".venv*", ".agency_swarm*", "node_modules*", "*.node_modules*", "activity*", "mnt*", "pptx*", "slides"]
 
 [tool.setuptools.package-data]
-"*" = ["*.md", "*.json", "agency-*"]
+"*" = ["*.md", "*.json", "*.mjs", "agency-*"]
+
+[tool.setuptools.data-files]
+"." = ["openswarm.config.mjs", "openswarm.product-env.json", "package.json"]
+"patches" = ["patches/dom-to-pptx+1.1.5.patch"]

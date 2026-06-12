@@ -11,7 +11,7 @@ from shared_tools.openai_client_utils import get_caller_openai_credentials
 
 def _refresh_runtime_env() -> None:
     """Reload add-on keys written through the TUI into the running process."""
-    _load_openswarm_dotenv()
+    _load_openswarm_dotenv(override=True)
 
 
 def _configured(value: bool) -> str:
@@ -54,7 +54,7 @@ def image_model_availability_message(tool=None, *, failed_requirement: str | Non
             f"- gpt-image-1.5: {_configured(direct_openai_available(tool))} (requires OpenAI API key auth; not Codex browser auth)",
             f"- background removal / Pixelcut: {_configured(fal_available())} (requires FAL_KEY add-on)",
             "",
-            "If the requested model is unavailable, switch to an available model above or ask the user to run /auth and add the missing add-on key.",
+            "If the requested model is unavailable, switch to an available model above or ask the user to run /addons and add the missing add-on key.",
         ]
     )
     return "\n".join(lines)
@@ -74,7 +74,7 @@ def video_model_availability_message(tool=None, *, failed_requirement: str | Non
             f"- sora-2: {_configured(direct_openai_available(tool))} (requires OpenAI API key auth; not Codex browser auth)",
             f"- sora-2-pro: {_configured(direct_openai_available(tool))} (requires OpenAI API key auth; not Codex browser auth)",
             "",
-            "If the requested model is unavailable, switch to an available model above or ask the user to run /auth and add the missing add-on key.",
+            "If the requested model is unavailable, switch to an available model above or ask the user to run /addons and add the missing add-on key.",
         ]
     )
     return "\n".join(lines)
